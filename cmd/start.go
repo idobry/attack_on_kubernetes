@@ -19,11 +19,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
+	//"os"
 
-	"github.com/gorilla/handlers"
+	//"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
+
+	"github.com/attack_on_kubernetes/controller"
 )
 
 // startCmd represents the start command
@@ -44,13 +46,18 @@ to quickly create a Cobra application.`,
 
 func serve() {
 	r := mux.NewRouter()
-	r.HandleFunc("/dep/{ns}/{dep}", controller.GetDeployment).Methods("GET")
-
+	r.HandleFunc("/create", controller.CreatePod).Methods("GET")
+	r.HandleFunc("/health-check", HealthCheck).Methods("GET")
 	fmt.Println("ListenAndServe...")
-	err := http.ListenAndServe(":" + os.Getenv("PORT"))
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
+}
+
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "API is up and running")
 }
 
 func init() {
