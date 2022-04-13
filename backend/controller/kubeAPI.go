@@ -1,67 +1,67 @@
 package controller
 
 import (
-    "fmt"
+	"fmt"
 	"net/http"
 
 	"context"
-	"strings"
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	"strings"
 	//ingcorev1 "k8s.io/client-go/kubernetes"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var (
-	PREFIX = ""
+	PREFIX    = ""
 	NAMESPACE = "wetty"
 )
 
-func CreateNewWetty(w http.ResponseWriter, r *http.Request){
+func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 
 	id := uuid.New()
-	PREFIX := strings.Split(id.String(), "-")[0]
+	PREFIX = strings.Split(id.String(), "-")[0]
 
 	kc := GetKubeClient()
 
-	deploy := getDeployObjet()
-	_, err := kc.AppsV1().Deployments(PREFIX+"wetty").Create(context.TODO(), deploy, metav1.CreateOptions{})
+	deploy := getDeployObject()
+	_, err := kc.AppsV1().Deployments("wetty").Create(context.TODO(), deploy, metav1.CreateOptions{})
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Deployment Created successfully!")
 
 	svc := getServiceObject()
-	_, err = kc.CoreV1().Services(PREFIX+"wetty").Create(context.TODO(), svc, metav1.CreateOptions{})
+	_, err = kc.CoreV1().Services("wetty").Create(context.TODO(), svc, metav1.CreateOptions{})
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Service Created successfully!")
 
 	ing := getIngressObject()
-	_, err = kc.NetworkingV1().Ingresses(PREFIX+"wetty").Create(context.TODO(), ing, metav1.CreateOptions{})
+	_, err = kc.NetworkingV1().Ingresses("wetty").Create(context.TODO(), ing, metav1.CreateOptions{})
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Ingress Created successfully!")
 }
 
-func getDeployObjet() *appsv1.Deployment {
+func getDeployObject() *appsv1.Deployment {
 	deploy := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      PREFIX+"wetty",
+			Name:      PREFIX + "wetty",
 			Namespace: NAMESPACE,
 			Labels: map[string]string{
 				"app.kubernetes.io/instance": "y2",
-				"component":                  "wetty",
+				"component":                  PREFIX + "wetty",
 			},
 			Annotations: map[string]string{
 				"deployment.kubernetes.io/revision": "2",
@@ -72,14 +72,14 @@ func getDeployObjet() *appsv1.Deployment {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app.kubernetes.io/instance": "y2",
-					"component":                  "wetty",
+					"component":                  PREFIX + "wetty",
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app.kubernetes.io/instance": "y2",
-						"component":                  "wetty",
+						"component":                  PREFIX + "wetty",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -147,22 +147,21 @@ func getDeployObjet() *appsv1.Deployment {
 			ProgressDeadlineSeconds: ptrint32(600),
 		},
 	}
-    return deploy
+	return deploy
 }
 
-func getServiceObject() *corev1.Service{
+func getServiceObject() *corev1.Service {
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "wetty-svc",
+			Name:      PREFIX + "-wetty-svc",
 			Namespace: "wetty",
 			Labels: map[string]string{
 				"app.kubernetes.io/instance": "y2",
 				"base/version":               "1.0",
-				"dynamicEnv":                 "true",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -179,21 +178,21 @@ func getServiceObject() *corev1.Service{
 			},
 			Selector: map[string]string{
 				"app.kubernetes.io/instance": "y2",
-				"component":                  "wetty",
+				"component":                  PREFIX + "wetty",
 			},
 		},
 	}
 	return svc
 }
 
-func getIngressObject() *networkingv1.Ingress{
+func getIngressObject() *networkingv1.Ingress {
 	ing := &networkingv1.Ingress{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Ingress",
 			APIVersion: "networking.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "wetty-ing",
+			Name:      PREFIX + "-wetty-ing",
 			Namespace: "wetty",
 			Annotations: map[string]string{
 				"nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
@@ -211,8 +210,8 @@ func getIngressObject() *networkingv1.Ingress{
 									PathType: ptrPathType("ImplementationSpecific"),
 									Backend: networkingv1.IngressBackend{
 										Service: &networkingv1.IngressServiceBackend{
-											Name: "wetty-svc",
-											Port: corev1.ServiceBackendPort{
+											Name: PREFIX + "-wetty-svc",
+											Port: networkingv1.ServiceBackendPort{
 												Name:   "http",
 												Number: 0,
 											},
