@@ -1,8 +1,5 @@
 import { ReactNode } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
-
-import { AppConfig } from '@/utils/AppConfig';
 import NavBar from '@/components/NavBar/NavBar';
 
 type IMainProps = {
