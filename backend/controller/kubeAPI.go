@@ -9,9 +9,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"encoding/json"
 	"strings"
 	//ingcorev1 "k8s.io/client-go/kubernetes"
-	"k8s.io/apimachinery/pkg/api/resource"
+	//"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -22,32 +23,58 @@ var (
 )
 
 func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
-
 	id := uuid.New()
-	PREFIX = strings.Split(id.String(), "-")[0]
+	PREFIX = "x"+strings.Split(id.String(), "-")[0]
 
 	kc := GetKubeClient()
 
 	deploy := getDeployObject()
-	_, err := kc.AppsV1().Deployments("wetty").Create(context.TODO(), deploy, metav1.CreateOptions{})
+	_, err := kc.AppsV1().Deployments(NAMESPACE).Create(context.TODO(), deploy, metav1.CreateOptions{})
 	if err != nil {
+		returnError(w)
 		panic(err)
 	}
 	fmt.Println("Deployment Created successfully!")
 
 	svc := getServiceObject()
-	_, err = kc.CoreV1().Services("wetty").Create(context.TODO(), svc, metav1.CreateOptions{})
+	_, err = kc.CoreV1().Services(NAMESPACE).Create(context.TODO(), svc, metav1.CreateOptions{})
 	if err != nil {
+		returnError(w)
 		panic(err)
 	}
 	fmt.Println("Service Created successfully!")
 
 	ing := getIngressObject()
-	_, err = kc.NetworkingV1().Ingresses("wetty").Create(context.TODO(), ing, metav1.CreateOptions{})
+	_, err = kc.NetworkingV1().Ingresses(NAMESPACE).Create(context.TODO(), ing, metav1.CreateOptions{})
 	if err != nil {
+		returnError(w)
 		panic(err)
 	}
 	fmt.Println("Ingress Created successfully!")
+
+	returnOKUID(w)
+}
+
+func returnError(w http.ResponseWriter){
+	resp := make(map[string]string)
+	w.WriteHeader(http.StatusBadRequest)
+	resp["result"] = "server error"
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		panic("Error happened in JSON marshal")
+	}
+	w.Write(jsonResp)
+}
+
+func returnOKUID(w http.ResponseWriter){
+	resp := make(map[string]string)
+	w.WriteHeader(http.StatusOK)
+	resp["uid"] = PREFIX
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		panic("Error happened in JSON marshal. Err")
+	}
+	w.Write(jsonResp)
 }
 
 func getDeployObject() *appsv1.Deployment {
@@ -57,11 +84,10 @@ func getDeployObject() *appsv1.Deployment {
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      PREFIX + "wetty",
+			Name:      PREFIX + "-wetty-deploy",
 			Namespace: NAMESPACE,
 			Labels: map[string]string{
-				"app.kubernetes.io/instance": "y2",
-				"component":                  PREFIX + "wetty",
+				"component": PREFIX + "-wetty",
 			},
 			Annotations: map[string]string{
 				"deployment.kubernetes.io/revision": "2",
@@ -71,22 +97,20 @@ func getDeployObject() *appsv1.Deployment {
 			Replicas: ptrint32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app.kubernetes.io/instance": "y2",
-					"component":                  PREFIX + "wetty",
+					"component": PREFIX + "-wetty",
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app.kubernetes.io/instance": "y2",
-						"component":                  PREFIX + "wetty",
+						"component": PREFIX + "-wetty",
 					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						corev1.Container{
 							Name:  "master",
-							Image: "wettyoss/wetty",
+							Image: "841009486958.dkr.ecr.eu-west-1.amazonaws.com/y2_k8tty:master-image-1.0.0",
 							Ports: []corev1.ContainerPort{
 								corev1.ContainerPort{
 									Name:          "http",
@@ -97,6 +121,10 @@ func getDeployObject() *appsv1.Deployment {
 							},
 							Env: []corev1.EnvVar{
 								corev1.EnvVar{
+									Name: "BASE",
+									Value: PREFIX,
+								},
+								corev1.EnvVar{
 									Name: "MY_POD_IP",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
@@ -106,16 +134,16 @@ func getDeployObject() *appsv1.Deployment {
 									},
 								},
 							},
-							Resources: corev1.ResourceRequirements{
+							/*Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									"cpu":    *resource.NewQuantity(600, resource.DecimalSI),
+									"cpu":    *resource.NewQuantity(600, resource.DecimalSI)+"m",
 									"memory": *resource.NewQuantity(524288000, resource.BinarySI),
 								},
 								Requests: corev1.ResourceList{
-									"cpu":    *resource.NewQuantity(50, resource.DecimalSI),
+									"cpu":    *resource.NewQuantity(50, resource.DecimalSI)+"m",
 									"memory": *resource.NewQuantity(157286400, resource.BinarySI),
 								},
-							},
+							},*/
 							TerminationMessagePath:   "/dev/termination-log",
 							TerminationMessagePolicy: corev1.TerminationMessagePolicy("File"),
 							ImagePullPolicy:          corev1.PullPolicy("IfNotPresent"),
@@ -158,7 +186,7 @@ func getServiceObject() *corev1.Service {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      PREFIX + "-wetty-svc",
-			Namespace: "wetty",
+			Namespace: NAMESPACE,
 			Labels: map[string]string{
 				"app.kubernetes.io/instance": "y2",
 				"base/version":               "1.0",
@@ -177,8 +205,7 @@ func getServiceObject() *corev1.Service {
 				},
 			},
 			Selector: map[string]string{
-				"app.kubernetes.io/instance": "y2",
-				"component":                  PREFIX + "wetty",
+				"component":                  PREFIX + "-wetty",
 			},
 		},
 	}
@@ -192,25 +219,26 @@ func getIngressObject() *networkingv1.Ingress {
 			APIVersion: "networking.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      PREFIX + "-wetty-ing",
-			Namespace: "wetty",
-			Annotations: map[string]string{
-				"nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
+			Name:      PREFIX+"-wetty-ing",
+			Namespace: NAMESPACE,
+			Labels: map[string]string{
+				"owner": "owner",
 			},
 		},
 		Spec: networkingv1.IngressSpec{
 			IngressClassName: ptrstring("nginx-internal"),
 			Rules: []networkingv1.IngressRule{
 				networkingv1.IngressRule{
-					Host: "wetty.yad2.io",
+					Host: "k8tty.yad2.io",
 					IngressRuleValue: networkingv1.IngressRuleValue{
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{
 								networkingv1.HTTPIngressPath{
+									Path:     "/"+PREFIX,
 									PathType: ptrPathType("ImplementationSpecific"),
 									Backend: networkingv1.IngressBackend{
 										Service: &networkingv1.IngressServiceBackend{
-											Name: PREFIX + "-wetty-svc",
+											Name: PREFIX+"-wetty-svc",
 											Port: networkingv1.ServiceBackendPort{
 												Name:   "http",
 												Number: 0,
