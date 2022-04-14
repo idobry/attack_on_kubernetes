@@ -30,7 +30,7 @@ const Index = () => {
                 {tty ? "delete me" : "Show me"}
               </button>
             </div>
-            {tty ? <iframe className='w-[90%] h-[90%] m-auto' src={WETTY_URL + tty} title="W3Schools Free Online Web Tutorials"></iframe> : null}
+            {tty ? <iframe className='w-[90%] h-[90%] m-auto' src={WETTY_URL + tty + "/"} title="W3Schools Free Online Web Tutorials"></iframe> : null}
             {tty ? <p>{tty}</p> : null}
           </div>
         </div>
