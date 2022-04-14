@@ -6,6 +6,7 @@ const Index = () => {
   // const [show, setShow] = useState<boolean>(false);
   const [tty, setTty] = useState('');
   const BACKEND_URL = process.env.BACKEND_URL || 'https://k8tty.yad2.io';
+  const WETTY_URL = process.env.WETTY_URL || "https://k8tty.yad2.io/";
 
   const update = () => {
     console.log("create")
@@ -29,7 +30,7 @@ const Index = () => {
                 {tty ? "delete me" : "Show me"}
               </button>
             </div>
-            {tty ? <iframe className='w-[90%] h-[90%] m-auto' src={process.env.WETTY_URL + tty} title="W3Schools Free Online Web Tutorials"></iframe> : null}
+            {tty ? <iframe className='w-[90%] h-[90%] m-auto' src={WETTY_URL + tty} title="W3Schools Free Online Web Tutorials"></iframe> : null}
             {tty ? <p>{tty}</p> : null}
           </div>
         </div>

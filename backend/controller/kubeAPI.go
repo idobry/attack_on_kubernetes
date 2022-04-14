@@ -124,7 +124,7 @@ func getDeployObject() *appsv1.Deployment {
 							Env: []corev1.EnvVar{
 								corev1.EnvVar{
 									Name: "BASE",
-									Value: PREFIX,
+									Value: "/" + PREFIX,
 								},
 								corev1.EnvVar{
 									Name: "MY_POD_IP",
