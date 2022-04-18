@@ -38,7 +38,7 @@ func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 		returnError(w)
 		panic(err)
 	}
-	fmt.Println("Service Created successfully!")
+	fmt.Println("Service " + PREFIX + " Created successfully!")
 
 	ing := getIngressObject()
 	_, err = kc.NetworkingV1().Ingresses(NAMESPACE).Create(context.TODO(), ing, metav1.CreateOptions{})
@@ -46,7 +46,7 @@ func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 		returnError(w)
 		panic(err)
 	}
-	fmt.Println("Ingress Created successfully!")
+	fmt.Println("Ingress " + PREFIX + " Created successfully!")
 
 	deploy := getDeployObject()
 	_, err = kc.AppsV1().Deployments(NAMESPACE).Create(context.TODO(), deploy, metav1.CreateOptions{})
@@ -60,26 +60,32 @@ func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 		returnError(w)
 		panic(err)
 	}
-	fmt.Println("Deployment Created successfully!")
+	fmt.Println("Deployment " + PREFIX + " Created successfully!")
 
 	returnOKUID(w)
 }
 
 func podRunning() bool{
-	cnt := 0
+	count := 0
+	fmt.Println("1")
 	kc := GetKubeClient()
-	labelSelector := "component=" + PREFIX + "-wetty"
+	fmt.Println("2")
+	labelSelector := "component= " + PREFIX + " -wetty"
 	watch, err := kc.CoreV1().Pods(NAMESPACE).Watch(context.TODO(), metav1.ListOptions{
 	    LabelSelector: labelSelector,
 	})
+	fmt.Println("3")
 	if err != nil {
+		fmt.Println("4")
 	    fmt.Println(err.Error())
 	}
-
+	fmt.Println("5")
 	for event := range watch.ResultChan() {
 	    //fmt.Printf("Type: %v\n", event.Type)
+		fmt.Println("6")
 	    p, ok := event.Object.(*corev1.Pod)
-	    if !ok || cnt > 12 {
+	    if !ok || count > 12 {
+			fmt.Println("7")
 	        fmt.Println("unexpected type")
 			return false
 	    }
@@ -89,9 +95,9 @@ func podRunning() bool{
 		}
 
 		time.Sleep(5 * time.Second)
-		cnt = cnt + 1
+		count = count + 1
 	}
-
+	fmt.Println("8")
 	return false
 }
 
