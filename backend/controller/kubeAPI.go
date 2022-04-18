@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"time"
+	"os"
 
 	"context"
 	"github.com/google/uuid"
@@ -19,7 +21,7 @@ import (
 
 var (
 	PREFIX    = ""
-	NAMESPACE = "wetty"
+	NAMESPACE = os.Getenv("NAMESPACE")
 )
 
 func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
@@ -30,16 +32,8 @@ func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 
 	kc := GetKubeClient()
 
-	deploy := getDeployObject()
-	_, err := kc.AppsV1().Deployments(NAMESPACE).Create(context.TODO(), deploy, metav1.CreateOptions{})
-	if err != nil {
-		returnError(w)
-		panic(err)
-	}
-	fmt.Println("Deployment Created successfully!")
-
 	svc := getServiceObject()
-	_, err = kc.CoreV1().Services(NAMESPACE).Create(context.TODO(), svc, metav1.CreateOptions{})
+	_, err := kc.CoreV1().Services(NAMESPACE).Create(context.TODO(), svc, metav1.CreateOptions{})
 	if err != nil {
 		returnError(w)
 		panic(err)
@@ -54,7 +48,51 @@ func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("Ingress Created successfully!")
 
+	deploy := getDeployObject()
+	_, err = kc.AppsV1().Deployments(NAMESPACE).Create(context.TODO(), deploy, metav1.CreateOptions{})
+	if err != nil {
+		returnError(w)
+		panic(err)
+	}
+
+	success := podRunning()
+	if !success {
+		returnError(w)
+		panic(err)
+	}
+	fmt.Println("Deployment Created successfully!")
+
 	returnOKUID(w)
+}
+
+func podRunning() bool{
+	cnt := 0
+	kc := GetKubeClient()
+	labelSelector := "component=" + PREFIX + "-wetty"
+	watch, err := kc.CoreV1().Pods(NAMESPACE).Watch(context.TODO(), metav1.ListOptions{
+	    LabelSelector: labelSelector,
+	})
+	if err != nil {
+	    fmt.Println(err.Error())
+	}
+
+	for event := range watch.ResultChan() {
+	    //fmt.Printf("Type: %v\n", event.Type)
+	    p, ok := event.Object.(*corev1.Pod)
+	    if !ok || cnt > 12 {
+	        fmt.Println("unexpected type")
+			return false
+	    }
+
+	    if p.Status.Phase == "Running"{
+			return true
+		}
+
+		time.Sleep(5 * time.Second)
+		cnt = cnt + 1
+	}
+
+	return false
 }
 
 func returnError(w http.ResponseWriter){
@@ -112,7 +150,7 @@ func getDeployObject() *appsv1.Deployment {
 					Containers: []corev1.Container{
 						corev1.Container{
 							Name:  "master",
-							Image: "841009486958.dkr.ecr.eu-west-1.amazonaws.com/y2_k8tty:master-image-1.0.0",
+							Image: os.Getenv("NAMESPACE"),
 							Ports: []corev1.ContainerPort{
 								corev1.ContainerPort{
 									Name:          "http",
@@ -190,8 +228,7 @@ func getServiceObject() *corev1.Service {
 			Name:      PREFIX + "-wetty-svc",
 			Namespace: NAMESPACE,
 			Labels: map[string]string{
-				"app.kubernetes.io/instance": "y2",
-				"base/version":               "1.0",
+				"component": PREFIX + "-wetty",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -224,7 +261,7 @@ func getIngressObject() *networkingv1.Ingress {
 			Name:      PREFIX+"-wetty-ing",
 			Namespace: NAMESPACE,
 			Labels: map[string]string{
-				"owner": "owner",
+				"component": PREFIX + "-wetty",
 			},
 		},
 		Spec: networkingv1.IngressSpec{
