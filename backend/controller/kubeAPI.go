@@ -150,7 +150,7 @@ func getDeployObject() *appsv1.Deployment {
 					Containers: []corev1.Container{
 						corev1.Container{
 							Name:  "master",
-							Image: os.Getenv("NAMESPACE"),
+							Image: os.Getenv("IMAGE"),
 							Ports: []corev1.ContainerPort{
 								corev1.ContainerPort{
 									Name:          "http",
