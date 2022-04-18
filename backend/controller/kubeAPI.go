@@ -55,7 +55,7 @@ func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	success := podRunning()
+	success := podRunning(kc)
 	if !success {
 		returnError(w)
 		panic(err)
@@ -65,10 +65,9 @@ func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 	returnOKUID(w)
 }
 
-func podRunning() bool{
+func podRunning(kc *kubernetes.Clientset) bool{
 	count := 0
 	fmt.Println("1")
-	kc := GetKubeClient()
 	fmt.Println("2")
 	labelSelector := "component=" + PREFIX + "-wetty"
 	fmt.Println(labelSelector)
