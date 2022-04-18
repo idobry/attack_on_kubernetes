@@ -70,7 +70,7 @@ func podRunning() bool{
 	fmt.Println("1")
 	kc := GetKubeClient()
 	fmt.Println("2")
-	labelSelector := "component= " + PREFIX + " -wetty"
+	labelSelector := "component=" + PREFIX + "-wetty"
 	watch, err := kc.CoreV1().Pods(NAMESPACE).Watch(context.TODO(), metav1.ListOptions{
 	    LabelSelector: labelSelector,
 	})
