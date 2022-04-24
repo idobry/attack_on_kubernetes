@@ -1,4 +1,4 @@
-import Lottie from 'react-lottie';
+import Lottie from 'lottie-react';
 import animationData from './cat.json';
 
 const Loading = () => {
