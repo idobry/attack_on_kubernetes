@@ -12,18 +12,62 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"encoding/json"
 	"strings"
-	//ingcorev1 "k8s.io/client-go/kubernetes"
-	//"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var (
 	PREFIX    = ""
-	NAMESPACE = os.Getenv("NAMESPACE")
+	NAMESPACE = os.Getenv("NAMESPACE") //man
+	HOST = os.Getenv("HOST") //man
+	IMAGE = os.Getenv("IMAGE") //man
+	SSHPASS = os.Getenv("SSHPASS") //man
+	SSHUSER = os.Getenv("SSHUSER") //man
+	SAN = os.Getenv("SERVICE_ACCOUNT_NAME") //optional 
 )
+
+func DeleteWetty(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers")
+
+	decoder := json.NewDecoder(r.Body)
+	deleteRequest := struct {
+		UID string `json:"uid"` // pointer so we can test for field absence
+	}{}
+    err := decoder.Decode(&deleteRequest)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(deleteRequest.UID)
+
+	kc := GetKubeClient()
+
+	err = kc.CoreV1().Services(NAMESPACE).Delete(context.TODO(), deleteRequest.UID + "-wetty-svc", metav1.DeleteOptions{})
+	if err != nil {
+		returnError(w)
+		panic(err)
+	}
+	fmt.Println("Service " + deleteRequest.UID + " Deleted successfully!")
+
+	err = kc.NetworkingV1().Ingresses(NAMESPACE).Delete(context.TODO(), deleteRequest.UID + "-wetty-ing", metav1.DeleteOptions{})
+	if err != nil {
+		returnError(w)
+		panic(err)
+	}
+	fmt.Println("Ingress " + deleteRequest.UID + " Deleted successfully!")
+
+	err = kc.AppsV1().Deployments(NAMESPACE).Delete(context.TODO(), deleteRequest.UID + "-wetty-deploy", metav1.DeleteOptions{})
+	if err != nil {
+		returnError(w)
+		panic(err)
+	}
+	fmt.Println("Deployment " + deleteRequest.UID + " Deleted successfully!")
+
+	returnOKUID(w)
+}
 
 func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -68,26 +112,19 @@ func CreateNewWetty(w http.ResponseWriter, r *http.Request) {
 
 func podRunning(kc *kubernetes.Clientset) bool{
 	count := 0
-	fmt.Println("1")
-	fmt.Println("2")
 	labelSelector := "component=" + PREFIX + "-wetty"
 	fmt.Println(labelSelector)
 	fmt.Println(NAMESPACE)
 	watch, err := kc.CoreV1().Pods(NAMESPACE).Watch(context.TODO(), metav1.ListOptions{
 	    LabelSelector: labelSelector,
 	})
-	fmt.Println("3")
 	if err != nil {
-		fmt.Println("4")
 	    fmt.Println(err.Error())
 	}
-	fmt.Println("5")
 	for event := range watch.ResultChan() {
 	    //fmt.Printf("Type: %v\n", event.Type)
-		fmt.Println("6")
 	    p, ok := event.Object.(*corev1.Pod)
 	    if !ok || count > 12 {
-			fmt.Println("7")
 	        fmt.Println("unexpected type")
 			return false
 	    }
@@ -99,7 +136,6 @@ func podRunning(kc *kubernetes.Clientset) bool{
 		time.Sleep(5 * time.Second)
 		count = count + 1
 	}
-	fmt.Println("8")
 	return false
 }
 
@@ -120,12 +156,17 @@ func returnOKUID(w http.ResponseWriter){
 	resp["uid"] = PREFIX
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
-		panic("Error happened in JSON marshal. Err")
+		panic("Error happened in JSON marshal")
 	}
 	w.Write(jsonResp)
 }
 
 func getDeployObject() *appsv1.Deployment {
+
+	if SAN == ""{
+		SAN = "defailt"
+	}
+
 	deploy := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
@@ -136,9 +177,6 @@ func getDeployObject() *appsv1.Deployment {
 			Namespace: NAMESPACE,
 			Labels: map[string]string{
 				"component": PREFIX + "-wetty",
-			},
-			Annotations: map[string]string{
-				"deployment.kubernetes.io/revision": "2",
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -158,7 +196,7 @@ func getDeployObject() *appsv1.Deployment {
 					Containers: []corev1.Container{
 						corev1.Container{
 							Name:  "master",
-							Image: os.Getenv("IMAGE"),
+							Image: IMAGE,
 							Ports: []corev1.ContainerPort{
 								corev1.ContainerPort{
 									Name:          "http",
@@ -168,6 +206,14 @@ func getDeployObject() *appsv1.Deployment {
 								},
 							},
 							Env: []corev1.EnvVar{
+								corev1.EnvVar{
+									Name: "SSHUSER",
+									Value: SSHUSER,
+								},
+								corev1.EnvVar{
+									Name: "SSHPASS",
+									Value: SSHPASS,
+								},
 								corev1.EnvVar{
 									Name: "BASE",
 									Value: "/" + PREFIX,
@@ -182,21 +228,22 @@ func getDeployObject() *appsv1.Deployment {
 									},
 								},
 							},
-							/*Resources: corev1.ResourceRequirements{
+							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									"cpu":    *resource.NewQuantity(600, resource.DecimalSI)+"m",
+									"cpu":    *resource.NewQuantity(int64(1), resource.DecimalSI),
 									"memory": *resource.NewQuantity(524288000, resource.BinarySI),
 								},
-								Requests: corev1.ResourceList{
-									"cpu":    *resource.NewQuantity(50, resource.DecimalSI)+"m",
+								/*Requests: corev1.ResourceList{
+									"cpu":    *resource.NewQuantity(.5, resource.DecimalSI),
 									"memory": *resource.NewQuantity(157286400, resource.BinarySI),
-								},
-							},*/
+								},*/
+							},
 							TerminationMessagePath:   "/dev/termination-log",
 							TerminationMessagePolicy: corev1.TerminationMessagePolicy("File"),
 							ImagePullPolicy:          corev1.PullPolicy("IfNotPresent"),
 						},
 					},
+					ServiceAccountName: SAN,
 					RestartPolicy:                 corev1.RestartPolicy("Always"),
 					TerminationGracePeriodSeconds: ptrint64(30),
 					DNSPolicy:                     corev1.DNSPolicy("ClusterFirst"),
@@ -252,7 +299,7 @@ func getServiceObject() *corev1.Service {
 				},
 			},
 			Selector: map[string]string{
-				"component":                  PREFIX + "-wetty",
+				"component": PREFIX + "-wetty",
 			},
 		},
 	}
@@ -276,7 +323,7 @@ func getIngressObject() *networkingv1.Ingress {
 			IngressClassName: ptrstring("nginx-internal"),
 			Rules: []networkingv1.IngressRule{
 				networkingv1.IngressRule{
-					Host: "k8tty.yad2.io",
+					Host: HOST,
 					IngressRuleValue: networkingv1.IngressRuleValue{
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{
