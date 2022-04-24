@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wetty
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    base/version: "1.0"
+    dynamicEnv: "true"
+  name: wetty-back-svc
+  namespace: wetty
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  selector:
+    component: wetty-back
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: wetty-back
+  name: wetty-back
+  namespace: wetty
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      component: wetty-back
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        component: wetty-back
+    spec:
+      containers:
+      - image: 841009486958.dkr.ecr.eu-west-1.amazonaws.com/y2_k8tty_backend:master-image-1.0.6
+        imagePullPolicy: IfNotPresent
+        name: master
+        env:
+          - name: NAMESPACE
+            value: wetty
+          - name: IMAGE
+            value: 841009486958.dkr.ecr.eu-west-1.amazonaws.com/y2_k8tty:master-image-1.0.0
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 600m
+            memory: 500Mi
+          requests:
+            cpu: 50m
+            memory: 150Mi
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      serviceAccountName: wetty
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  name: wetty-back-ing
+  namespace: wetty
+spec:
+  ingressClassName: nginx-internal
+  rules:
+  - host: k8tty.yad2.io
+    http:
+      paths:
+      - backend:
+          serviceName: wetty-back-svc
+          servicePort: http
+        path: /create
+        pathType: ImplementationSpecific
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wetty
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: wetty
+  name: create-pods
+rules:
+- apiGroups: ["networking.k8s.io", "apps"]
+  resources: ["deployments", "ingresses"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: create-pods
+  namespace: wetty
+subjects:
+- kind: User
+  name: system:serviceaccount:wetty:wetty
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: create-pods
+  apiGroup: rbac.authorization.k8s.io
