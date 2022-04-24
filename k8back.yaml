@@ -50,6 +50,12 @@ spec:
         env:
           - name: NAMESPACE
             value: wetty
+          - name: SSHUSER
+            value: sshuser
+          - name: SSHPASS
+            value: sshpass
+          - name: HOST
+            value: k8tty.yad2.io
           - name: IMAGE
             value: 841009486958.dkr.ecr.eu-west-1.amazonaws.com/y2_k8tty:master-image-1.0.0
         ports:

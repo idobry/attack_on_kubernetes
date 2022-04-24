@@ -47,6 +47,7 @@ to quickly create a Cobra application.`,
 func serve() {
 	r := mux.NewRouter()
 	r.HandleFunc("/create", controller.CreateNewWetty).Methods("GET")
+	r.HandleFunc("/delete", controller.DeleteWetty).Methods("POST")
 	r.HandleFunc("/health-check", HealthCheck).Methods("GET")
 	fmt.Println("ListenAndServe...")
 	err := http.ListenAndServe(":8080", r)
