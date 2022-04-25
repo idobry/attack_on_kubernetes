@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	"os"
+	//"os"
 
 	"context"
 	"github.com/google/uuid"
@@ -20,13 +20,14 @@ import (
 )
 
 var (
-	PREFIX    = ""
-	NAMESPACE = os.Getenv("NAMESPACE") //man
-	HOST = os.Getenv("HOST") //man
-	IMAGE = os.Getenv("IMAGE") //man
-	SSHPASS = os.Getenv("SSHPASS") //man
-	SSHUSER = os.Getenv("SSHUSER") //man
-	SAN = os.Getenv("SERVICE_ACCOUNT_NAME") //optional 
+	PREFIX    = ""	
+	NAMESPACE = ""
+	HOST = ""
+	IMAGE = ""
+	SSHPASS = ""
+	SSHUSER = ""
+	INGRESS_CLASS = ""
+	SAN = ""
 )
 
 func DeleteWetty(w http.ResponseWriter, r *http.Request) {
@@ -320,7 +321,7 @@ func getIngressObject() *networkingv1.Ingress {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			IngressClassName: ptrstring("nginx-internal"),
+			IngressClassName: ptrstring(INGRESS_CLASS),
 			Rules: []networkingv1.IngressRule{
 				networkingv1.IngressRule{
 					Host: HOST,

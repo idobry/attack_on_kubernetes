@@ -19,13 +19,23 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	//"os"
+	"os"
 
 	//"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
 
 	"github.com/attack_on_kubernetes/controller"
+)
+
+var (
+	//NAMESPACE = os.Getenv("NAMESPACE") //man
+	HOST = os.Getenv("HOST") //man
+	IMAGE = os.Getenv("IMAGE") //man
+	SSHPASS = os.Getenv("SSHPASS") //man
+	SSHUSER = os.Getenv("SSHUSER") //man
+	INGRESS_CLASS = os.Getenv("INGRESS_CLASS") //man
+	SAN = os.Getenv("SERVICE_ACCOUNT_NAME") //optional 
 )
 
 // startCmd represents the start command
@@ -39,7 +49,15 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("start called")
+
+		controller.NAMESPACE, _ = cmd.Flags().GetString("namespace")
+		controller.HOST, _ = cmd.Flags().GetString("host")
+		controller.IMAGE, _ = cmd.Flags().GetString("image")
+		controller.SSHPASS, _ = cmd.Flags().GetString("sshpass")
+		controller.SSHUSER, _ = cmd.Flags().GetString("sshuser")
+		controller.INGRESS_CLASS, _ = cmd.Flags().GetString("ingress-class")
+		controller.SAN, _ = cmd.Flags().GetString("service-account")
+
 		serve()
 	},
 }
@@ -64,13 +82,19 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 func init() {
 	rootCmd.AddCommand(startCmd)
 
-	// Here you will define your flags and configuration settings.
+	startCmd.PersistentFlags().String("namespace","default", "A help for namespace")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// startCmd.PersistentFlags().String("foo", "", "A help for foo")
+	startCmd.PersistentFlags().String("host","", "A help for host")
+	startCmd.MarkPersistentFlagRequired("host")
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// startCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	startCmd.PersistentFlags().String("image","idobry/k8tty_backend", "A help for image")
+
+	startCmd.PersistentFlags().String("sshuser","k8tty", "A help for sshuser")
+
+	startCmd.PersistentFlags().String("sshpass","k8tty", "A help for sshuser")
+
+	startCmd.PersistentFlags().String("ingress-class", "", "A help for foo")
+	startCmd.MarkPersistentFlagRequired("ingress-class")
+
+	startCmd.PersistentFlags().String("service-account", "default", "A help for foo")
 }
