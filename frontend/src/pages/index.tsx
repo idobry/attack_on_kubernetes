@@ -28,7 +28,9 @@ const Index = () => {
       return
     }
     axios
-        .get(BACKEND_URL + "/create")
+        .get(BACKEND_URL + "/create",{headers: {
+          'Content-Type': 'application/json'
+      }})
         .then((res) => {
           setTty(res.data.uid);
           setLoad(false)
@@ -49,7 +51,7 @@ const Index = () => {
               </button>
             </div>
             {load ? <Loading></Loading> : null}
-            {tty ? <iframe className='w-[90%] h-[90%] m-auto' src={WETTY_URL + tty + "/"} title="W3Schools Free Online Web Tutorials"></iframe> : null}
+            {tty ? <iframe className='w-[90%] h-[90%] m-auto' src={WETTY_URL + tty} title="W3Schools Free Online Web Tutorials"></iframe> : null}
             {tty ? <p>{tty}</p> : null}
           </div>
         </div>
