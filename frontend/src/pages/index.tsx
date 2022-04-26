@@ -15,7 +15,7 @@ const Index = () => {
     setLoad(true)
     if(tty){
       axios
-          .post(BACKEND_URL + "/delete", {uuid: tty})
+          .post(BACKEND_URL + "/delete", {uid: tty})
           .then(() => {
             setTty('');
             setLoad(false)
