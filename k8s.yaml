@@ -53,8 +53,8 @@ spec:
         - name: WETTY_URL
           value: https://k8tty.yad2.io/
         - name: BACKEND_URL
-          value: https://k8tty.yad2.io/
-        image: idobry/k8tty_frontend
+          value: https://k8tty.yad2.io
+        image: 841009486958.dkr.ecr.eu-west-1.amazonaws.com/y2_k8tty_frontend:master-image-1.0.1
         imagePullPolicy: IfNotPresent
         name: master
         ports:

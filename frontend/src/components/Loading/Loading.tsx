@@ -2,6 +2,11 @@ import Lottie from 'lottie-react';
 import animationData from './cat.json';
 
 const Loading = () => {
+    const style = {
+        height: 400,
+        width: 400,
+        margin: 'auto'
+      };
     const defaultOptions = {
         loop: true,
         autoplay: true,
@@ -11,11 +16,11 @@ const Loading = () => {
         }
       };
     return (
-        <div>
+        <div className='w-[90%] h-[90%] m-auto'>
             <Lottie 
-                options={defaultOptions}
-                height={400}
-                width={400}
+                animationData={animationData}
+                style={style}
+                loop={true}
             />
         </div>
     );
