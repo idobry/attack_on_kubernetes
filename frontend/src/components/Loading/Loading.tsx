@@ -7,14 +7,6 @@ const Loading = () => {
         width: 400,
         margin: 'auto'
       };
-    const defaultOptions = {
-        loop: true,
-        autoplay: true,
-        animationData: animationData,
-        rendererSettings: {
-          preserveAspectRatio: "xMidYMid slice"
-        }
-      };
     return (
         <div className='w-[90%] h-[90%] m-auto'>
             <Lottie 
